@@ -6,7 +6,7 @@ z5422011 - for emails
 Quizzes 12%\
 Assignment 1 13%\
 Assignment 2 15%\
-Final Exam 60%\
+Final Exam 60%
 
 # What are we learning
 75% can you use SQL and Python to extract and manipulate information from databases\
@@ -25,4 +25,4 @@ PRACTICE PRACTICE PRACTICE\
 Finish tutorial questions\
 Ask questions in tutorials\
 Practice Problems\
-Practice Exams!\
+Practice Exams!
