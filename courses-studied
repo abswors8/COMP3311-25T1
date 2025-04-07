@@ -1,0 +1,37 @@
+#!/usr/bin/python3
+
+import sys
+import psycopg2
+
+if len(sys.argv) < 3:
+    print("Usage: ./courses-studied studentID term")
+    exit(1)
+studentID = sys.argv[1]
+term=sys.arg[2]
+conn=None
+qry=f"""select s.code, s.name from subjects s join courses c on s.id=c.subject
+join terms t on t.id=c.term join course_enrolments ce on ce.course=c.id
+join people p on p.id=ce.student where p.id= %s and t.code = %s"""
+studentq=f"""select id from students where id = %s"""
+try:
+    conn=psycopg2.connect(dbname='uni')
+    cur=conn.cursor()
+    cur.execute(studentq,[studentID])
+    student=cur.fetchone()
+    if student is None:
+        print("No such student")
+        sys.exit(0)
+    cur.execute(qry,[studentID,term])
+    results=cur.fetchall()
+    for res in results:
+        print(res[0], res[1])
+    cur.close()
+
+except psycopg2.Error as e:
+    print(e)
+    sys.exit(1)
+
+finally:
+    if conn is not None:
+        conn.close()
+

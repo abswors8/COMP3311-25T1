@@ -1,0 +1,43 @@
+#!/usr/bin/python3
+
+import sys
+import psycopg2
+
+if len(sys.argv) < 2:
+    print("Usage: ./courses-studied partname")
+    exit(1)
+school = sys.argv[1]
+conn=None
+qry=f"""select count(distinct s.code) from Subjects s 
+join courses c on (s.id=c.subject) 
+join orgunits o on o.id=s.offeredby where o.id=%s"""
+schoolq=f"""select id, longname from OrgUnits where longname ~* %s"""
+try:
+    conn=psycopg2.connect(dbname='uni')
+    cur=conn.cursor()
+    cur.execute(schoolq,[school])
+    schools=cur.fetchall()
+    if len(schools) == 0:
+        print("No such school")
+        sys.exit(0)
+    elif len(schools) > 1:
+        print("Multiple schools match: ")
+        for school in schools:
+            print(school[1])
+    else:
+        school = schools[0]
+        cur.execute(qry,[school[0]])
+        nsubjects=cur.fetchone()
+        print(school[1], "teaches ", nsubjects[0], " subjects")
+
+
+    cur.close()
+
+except psycopg2.Error as e:
+    print(e)
+    sys.exit(1)
+
+finally:
+    if conn is not None:
+        conn.close()
+

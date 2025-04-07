@@ -1,0 +1,55 @@
+#!/usr/bin/python3
+
+import sys
+import psycopg2
+
+if len(sys.argv) < 3:
+    print("Usage: ./course-roll subject term")
+    exit(1)
+subject = sys.argv[1]
+term=sys.arg[2]
+conn=None
+qry=f"""select p.id, p.family, p.given from people p join course_enrolments ce on ce.student=p.id
+join courses c on c.id=ce.course
+join terms t on t.id=c.term
+join subjects s on s.id=c.subject where s.code = %s and t.code = %s order by p.family, p.given"""
+subjq=f"""select * from subjects where code = %s"""
+termq=f"""select * from terms where code = %s"""
+offering=f"""select * from courses c join subjects s on s.id=c.subject join terms t on t.id=c.term where t.code = %s and s.code=%s"""
+try:
+    conn=psycopg2.connect(dbname='uni')
+    cur=conn.cursor()
+    cur.execute(qry,[subject,term])
+    students=cur.fetchall()
+    print(subject,term)
+    cur.execute(subjq,[subject])
+    s=cur.fetchone()
+    if s is None:
+        print("Invalid subject ", subject)
+        sys.exit(0)
+    cur.execute(termq,[term])
+    s=cur.fetchone()
+    if s is None:
+        print("Invalid term ", term)
+        sys.exit(0)
+    cur.execute(offering,[term, subject])
+    s=cur.fetchone()
+    if s is None:
+        print("No offering: ", subject, term)
+        sys.exit(0)
+    if len(students) == 0:
+        print("No students")
+        sys.exit(0)
+    for student in students:
+        print("{} {}, {}".format(student[0],student[1],student[2]))
+    cur.close()
+
+except psycopg2.Error as e:
+    print(e)
+    sys.exit(1)
+
+finally:
+    if conn is not None:
+        conn.close()
+
+code = 'COMP3311'
