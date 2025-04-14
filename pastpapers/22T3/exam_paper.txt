@@ -1,0 +1,287 @@
+Question 1 (3 marks)
+
+Write an SQL view that finds the horse (or horses) that have won the most Group 1 races.
+
+Races are categorized into "groups". Group 1 races are the top level, most prestigious races. Then there are Group 2, Group 3 and Group 4 races. The Group of a race is indicated by the Races.level attribute. The position that a horse finishes in a race is indicated by the Runners.finished field, with a value of 1 meaning finished first.
+
+Define the view as q1(horse).
+
+The expected result is:
+
+racing=# select * from q1;
+   horse    
+------------
+ Brown Jack
+(1 row)
+Note that a "solution" which does something like   "select 'Brown Jack' as horse"   is worth zero marks.
+
+Question 2 (4 marks)
+
+Write an SQL view that finds race that only have mares running in them.
+
+Horse genders are different to human genders. One horse gender is "mare" (represented by a value of 'M' in the Horses.gender attribute). We are interested in races where all of the horses have this gender.
+
+The result tuples should contain the name of the race, the racecourse where it was run, and the date it was run.
+
+Define the view as q2(name,course,date).
+
+The expected result:
+
+racing=# select * from q2 order by name;
+         name         |   course   |    date    
+----------------------+------------+------------
+ Blue Sapphire Stakes | Caulfield  | 2019-10-16
+ Caulfield Cup        | Caulfield  | 2019-10-19
+ Race 2               | Rosehill   | 2019-11-09
+ Race 2               | Rosehill   | 2020-03-21
+ Race 3               | Doomben    | 2020-06-13
+ Race 3               | Flemington | 2019-11-07
+(6 rows)
+
+Question 3 (5 marks)
+
+You will need to change the name of the database from "property" to "racing" in the "check" script before the checking will work properly.
+
+Write an SQL function that prints a summary of horses' gender and age for a given type of race.
+
+We want to represent information about each horse by its single character gender value and its single digit age value. For example M5 represents a 5-year-old mare and F2 represents a 2-year-old filly.
+
+For each race, we want to give a comma-separated list of horse gender/age entries. The list should be ordered by gender, and then by age. For more detail on what these lists look like, see the example below, or the expected outputs in the tests directory.
+
+We identify races by their "type", which typically appears as the last word in their name. For example, the "Melbourne Cup" has type "Cup", and the "Cox Plate" race has type "Plate". Many races have type "Stakes". The function should include any races whose name ends in the value given as the function argument. Name matching is case-sensitive.
+
+The function returns tuples of type race_horses, which consist of two text strings: one for the name of the race, the other for the list of gender/age entries for the runners in that race.
+
+Note that from within the function, you can refer to the text parameter using the notation $1.
+
+The race_horses type will be created each time you load the q3.sql file into the database. Each time, it gives a NOTICE; this is not an error message.
+
+Define the function as   function q3(text) returns race_horses ...
+
+Remember that it is an SQL function, not a PLpgSQL function.
+
+An example of usage:
+
+racing=# select * from q3('Plate') order by race;
+              race              |         horses          
+--------------------------------+-------------------------
+ Breeders' Plate                | F2,F3,F3,M3,M5
+ Craven Plate                   | F4,F4,F5,G3,M3,M4,M5,S4
+ Frank Packer Plate             | F3,F3,G3,G3,M3,M4
+ Japan Racing Association Plate | F3,F3,F4,F4,F4,M2,M3,M3
+ Maribyrnong Plate              | F4,F4,G3,M3,M4,M4
+ Oakleigh Plate                 | F3,F4,F4,G3,M3,M4
+ Rough Habit Plate              | F3,F3,F3,F4,G3,M3,M4,M4
+ Vo Rogue Plate                 | F3,F3,F4,F5,G4,M2,M4,S5
+ W. S. Cox Plate                | F2,F4,G3,M4,M4,M4,M5,S4
+(9 rows)
+
+Question 4 (4 marks)
+
+Write a PLpgSQL function that gives the average winnings for horses given by a partial name.
+
+The average winnings for a horse is defined as T/R, where
+
+T = total of prize pools from races that the horse won
+R = the number of races that the horse has run in
+Note that we are not using the 70:20:10 split of prize pool like in Q5. In this question, if a horse wins, it takes the entire prize pool. If it does not win, it gets nothing. For example, the horse called "Eddie" ran in 14 races, and won two of them for total winnings of 150000 + 160000 = 310000. Eddie's average winnings would thus be 310000/14 = 22142.
+
+The function returns tuples of type horse_winnings, which consist of two attributes: one for the name of the horse, the other for the integer value of their average winnings. You can assume that no horse in the database has run in no races (i.e no horse has R = 0).
+
+The function returns one tuple for each horse whose name matches the partial name given as the function parameter. Matching should be case-insensitive against Horses.name. If there are no matching horses, return an empty table.
+
+The horse_winnings type will be created each time you load the q4.sql file into the database. Each time, it gives a NOTICE; this is not an error message.
+
+Define the function as   function q4(part_name text) returns setof horse_winnings ...
+
+An example of usage is below. There are more examples in the tests directory.
+
+racing=# select * from q4('Eddie');
+ horse | average 
+-------+---------
+ Eddie |   22142
+(1 row)
+
+racing=# select * from q4('neigh') order by horse;
+           horse           | average 
+---------------------------+---------
+ Always Neighing           |   11133
+ Arnold Schwarze-neigh-ger |   27052
+ Hay Neighbor              |   75000
+ Hermoineigh               |    8947
+ Liam Neighson             |  108538
+ Neigh Sayer               |   77538
+ NeighNeigh Leaks          |   65000
+ Ron Neighsly              |     833
+ Sir Neighs Alot           |   56250
+(9 rows)
+
+Question 5 (8 marks)
+
+Write a Python/Psycopg2 script that prints details of a race meeting.
+
+It takes two command-line arguments: the name of a racecourse, which must be an exact match, and a date. If the given racecourse name does not exist (no entry in the RaceCourses table), it should print an error message and exit (see message format below). If the racecourse is valid, but there was no meeting at that racecourse on the given date, it should print an error message and exit (see message format below).
+
+If there is a race meeting at the given racecourse on the given date, then the script should print details about the meeting and then print information about each race at the meeting (in their Races.ord order).
+
+For each race, print the first three horses in the order they finished (winning horse first, etc.), print their jockey, and print their individual prize. There is a total prize pool for each race, and this is divided among the first three horses as follows: the winner gets 70% of the prize pool, second place gets 20%, and third place gets 10%. You can assume that each race has at least three horses running in it.
+
+Don't worry if, after computing the prizes (as integer values), the sum of the individual prizes does not add up to the total prize pool. Assume that the racecourse scoops up the extra money.
+
+The examples below show the expected output format:
+
+$ python3 ./q5
+Usage: ./q5 Racecourse Date
+$ python3 ./q5 Timbuktu 2020-01-01
+No such racecourse
+$ python3 ./q5 Flemington 2000-01-01
+No such meeting
+$ python3 ./q5 Caulfield 2020-07-25
+Race meeting at Caulfield on 2020-07-25
+
+Race 1, prize pool $1000, run over 2400m
+Liam Neighson ridden by Tommy Lowrey wins $700
+Salmon Trout ridden by Jose Lezcano wins $200
+Chatters ridden by Johnny Murtagh wins $100
+
+Race 2, prize pool $6000, run over 2100m
+Schumer ridden by Bob Skelton wins $4200
+Mane Attraction ridden by Peter Schiergen wins $1200
+Papyrus ridden by Brian Hernandez Jr. wins $600
+
+Race 3, prize pool $8000, run over 1800m
+Justine Thyme ridden by Jean Cruguet wins $5600
+Pinto Bean ridden by Paddy Brennan wins $1600
+Knight of the Thistle ridden by Rajiv Maragh wins $800
+
+Bletchingly Stakes, prize pool $160000, run over 1200m
+Brown Jack ridden by Campbell Gillies wins $112000
+Coronach ridden by Chris Hayes wins $32000
+Lemberg ridden by Johnny Loftus wins $16000
+
+Question 6 (7 marks)
+
+Consider the following ER diagram:
+
+
+Map this ER diagram to two different SQL schemas as follows:
+
+using the ER-style mapping for the subclasses
+
+using the single-table mapping for subclasses
+
+Use the same names as in the diagram. Name foreign keys after the table they refer to. Assume all attributes are of type text, except for id which is an integer primary key. Text attributes can be null; primary and foreign key attributes cannot be null. Every table must have a primary key defined.
+
+To keep things more compact, where possible use the short versions of primary and foreign key definitions, e.g.
+
+attr1 integer references Rel(attr2)
+-- rather than
+attr1 integer,
+...
+foreign key (attr1) references Rel(attr2)
+
+Question 7 (8 marks)
+
+Consider the following three relations (represented as tables):
+
+R
+ a | b | c
+---+---+---
+ x | 1 | a
+ y | 2 | b
+ z | 3 | a
+ x | 4 | b
+ y | 5 | a
+S
+ e | d | c
+---+---+---
+ 6 | 9 | a
+ 7 | 8 | b
+ 8 | 7 | c
+ 9 | 6 | d
+T
+ b | c
+---+---
+ 1 | a
+ 4 | b
+Show the result of applying each of the following relational algebra operations to the above tables:
+
+  Proj[a]R
+
+  Sel[e>d]S
+
+  R Join S
+
+  R Join[b=e] S
+
+  R Div T
+
+Note that join without a condition corresponds to the natural join operation.
+
+Display the results in the same format as above, call the table X, and clearly indicate the names of all attributes. Note that, while we are displaying results as a table, they are actually sets, and so there should be no duplicates.
+
+Question 8 (6 marks)
+
+Consider the following University database schema:
+
+Students(id, name, dob, address)
+Courses(id, code, term, title, uoc)
+Enrolments(student, course, mark)
+And the following Python code fragment to manipulate it:
+
+zID = sys.argv[1]
+query = """
+select distinct term
+from   Enrolments e join Courses c on c.id = e.course
+where  student = %s order by term
+"""
+query2 = """
+select c.code, c.title, c.uoc, e.mark
+from   Enrolments e join Courses c on c.id = e.course
+where  term = %s and student = %s
+"""
+try:
+    db = psycopg2.connect("dbname=unsw")
+    cur = db.cursor()
+    cur2 = db.cursor()
+    tot1,tot2 = (0,0)
+    cur.execute(query, [zID]);
+    for term in cur.fetchall():
+        print(f"Courses for term {term[0]}")
+        cur2.execute(query2, [term, zID])
+        for res in cur2.fetchall():
+            code,title,uoc,mark = res
+            if mark is not None:
+                tot1 = tot1 + uoc
+                tot2 = tot2 + mark*uoc
+            print(f"{res[0]} {res[1]} {res[3]}")
+    print(f"{tot2 / tot1}")
+
+what is this code computing?
+
+what error condition has not been considered?
+
+if a student studies 3 courses per term for 10 terms, how many execute() operations occur
+
+suggest a single query that could be used with a single for loop to produce the same result more efficiently
+
+Question 9 (6 marks)
+
+Consider two transactions that use locking to control concurrency:
+
+T1: Lr(Y) R(Y) U(Y) Lw(X) R(X) W(X) U(X)
+T2: Lr(X) R(X) U(X) LW(Y) R(Y) W(Y) U(Y)
+where Lr applies a shared (read) lock on an object, Lw applies an exclusive (write) lock on an object, and U removes a lock on an object. R and W perform read and write operations respectively.
+
+If these two transactions are run in parallel, a possible schedule is:
+
+T1: Lr(Y) R(Y) U(Y)                                      Lw(X) R(X) W(X) U(X)
+T2:                 Lr(X) R(X) U(X) LW(Y) R(Y) W(Y) U(Y)
+
+A. is the concurrent schedule conflict serializable? show your reasoning
+
+B. is the concurrent schedule view serializable? show your reasoning
+
+C. write two-phase locking versions of the transactions
+
+D. are there any potential problems with using two-phase locking?

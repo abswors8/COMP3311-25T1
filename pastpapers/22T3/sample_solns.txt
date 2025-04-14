@@ -1,0 +1,457 @@
+
+These solutions are simply suggestions. In most cases many alternatives 
+exist which would be equally correct and also worth full marks. 
+Q1
+
+-- COMP3311 22T2 Q1
+-- Horse(s) that have won the most Group 1 races
+
+create or replace view Group1winners(horse,race)
+as
+select h.name, c.id
+from   Horses h
+       join Runners r on h.id = r.horse
+       join Races c on r.race = c.id
+where  c.level = 1 and r.finished = 1;
+
+create or replace view WinnerCounts(horse,nwins)
+as
+select horse,count(race)
+from   Group1winners
+group  by horse;
+
+create or replace view Q1 
+as
+select horse
+from   WinnerCounts
+where  nwins = (select max(nwins) from WinnerCounts);
+
+
+Q2
+
+-- COMP3311 22T2 Q2
+-- List of races with only Mares
+
+create or replace view RaceGenders(race,gender,nhorses)
+as
+select c.id, h.gender, count(distinct h.id)
+from   Horses h
+       join Runners r on h.id = r.horse
+       join Races c on r.race = c.id
+group  by c.id, h.gender;
+
+create or replace view MonoGender(race)
+as
+select race
+from   RaceGenders
+group  by race 
+having count(*) = 1;
+
+create or replace view MaresOnly(race)
+as
+select race
+from   RaceGenders
+where  race in (select * from MonoGender)
+       and gender = 'M'
+;
+
+create or replace view Q2(name,course,date)
+as
+select c.name, rc.name, m.run_on
+from   Races c
+       join Meetings m on c.part_of = m.id
+       join RaceCourses rc on rc.id = m.run_at
+       join MaresOnly mo on mo.race = c.id
+where  c.id in (select * from MonoGender)
+order  by m.run_on,rc.name;
+
+
+Q3
+
+-- COMP3311 22T2 Q3
+-- List of gender/age summaries for races of a given type
+
+drop type if exists race_horses cascade;
+create type race_horses as (race text, horses text);
+
+create or replace view q3a(id,race,horses)
+as
+select c.id, c.name, string_agg(gender||age::text,',' order by gender||age::text)
+from   Runners r
+       join Horses h on r.horse=h.id
+       join Races c on r.race=c.id
+group by c.id,c.name;
+
+
+create or replace function q3(text) returns setof race_horses
+as
+$$
+select race, horses
+from   q3a
+where  race like '%'||$1
+$$
+language sql;
+
+
+Q4
+
+-- COMP3311 22T3 Final Exam Q4
+-- Function to return average winnings for horses matching a partial name
+
+drop type if exists horse_winnings cascade;
+create type horse_winnings as (horse text, average integer);
+
+create or replace view Q4a(id,horse,winnings)
+as
+select h.id, h.name, sum(c.prize)
+from   Horses h join Runners r on r.horse=h.id join Races c on r.race = c.id
+where  r.finished = 1
+group  by h.id, h.name;
+
+create or replace view Q4b(id,horse,nraces)
+as
+select h.id, h.name, count(c.id)
+from   Horses h join Runners r on r.horse=h.id join Races c on r.race = c.id
+group  by h.id, h.name;
+
+create or replace function
+	Q4(part_name text) returns setof horse_winnings
+as $$
+declare
+	res horse_winnings;
+begin
+	for res in
+		select Q4a.horse, Q4a.winnings/Q4b.nraces
+		from   Q4a join Q4b on Q4a.id = Q4b.id
+		where  Q4a.horse ilike '%'||part_name||'%'
+	loop
+		return next res;
+	end loop;
+end;
+$$ language plpgsql;
+
+
+Q5
+
+#!/usr/bin/python3
+
+import sys
+import psycopg2
+import re
+
+# Helper functions
+
+def prizeShare(total,position):
+   if position == 1:
+      amount = int(total * 0.7)
+   elif position == 2:
+      amount = int(total * 0.2)
+   elif position == 3:
+      amount = int(total * 0.1)
+   else:
+      amount = 0
+   return amount
+
+db = None
+cur = None
+
+if len(sys.argv) < 3:
+   print(f"Usage: {sys.argv[0]} Racecourse Date")
+   exit(1)
+track = sys.argv[1]
+date = sys.argv[2]
+
+validDate = re.compile("^\d{4}-\d{2}-\d{2}$")
+if not validDate.match(date):
+	print(f"Invalid date")
+	exit(1)
+
+checkTrack = "select id,name from Racecourses where name = %s"
+checkMeet = "select id from Meetings where run_at = %s and run_on = %s"
+getRaces = "select * from Races where part_of = %s order by ord"
+getRunners = """
+select h.name, j.name, r.finished
+from   Runners r
+join   Horses h on r.horse = h.id
+join   Jockeys j on r.jockey = j.id
+where  race = %s
+order  by r.finished
+limit  3
+"""
+
+try:
+	db = psycopg2.connect("dbname=racing")
+	cur = db.cursor()
+
+	# check valid racecourse name
+	cur.execute(checkTrack, [track]);
+	t = cur.fetchone()
+	if t == None:
+		print(f"No such racecourse")
+		exit(1)
+	courseID,courseName = t
+
+	# check for meeting
+	cur.execute(checkMeet, [courseID, date])
+	t = cur.fetchone()
+	if t == None:
+		print(f"No such meeting")
+		exit(1)
+	meetID = t[0]
+
+	print(f"Race meeting at {courseName} on {date}")
+	
+	run = db.cursor()
+	cur.execute(getRaces, [meetID])
+	for t in cur.fetchall():
+		print(f"\n{t[1]}, prize pool ${t[4]}, run over {t[5]}m")
+		run.execute(getRunners, [t[0]])
+		for r in run.fetchall():
+			horse,jockey,position = r
+			amount = prizeShare(t[4],position)
+			print(f"{horse} ridden by {jockey} wins ${amount}")
+
+except psycopg2.Error as err:
+	print("DB error: ", err)
+finally:
+   if db:
+      db.close()
+   if cur:
+       cur.close()
+
+
+Q6
+
+# COMP3311 22T3 Final Exam Q6
+# SQL schema from ER design
+
+(A) ER-mapping of subclasses
+
+create table A (
+    id integer primary key,
+    x text
+);
+
+create table B (
+    a integer primary key references A(id),
+    y text
+);
+
+create table C (
+    a integer primary key references A(id)
+);
+
+create table Z (
+    c integer references C(a),
+    z text,
+    primary key (c, z)
+);
+
+create table D (
+    id integer primary key,
+    w text
+);
+
+create table R (
+    c integer references C(a),
+    d integer references D(id),
+    primary key (c, d)
+);
+
+-- note: total participation cannot be enforced at a schema level since the
+-- constraint would involve multiple tables
+
+(B) Single-table-mapping of subclasses
+
+create table A (
+    id integer primary key,
+    b boolean, -- true if A is a B
+    c boolean, -- true if A is a C
+    x text,
+    y text,
+    -- ensure total participation
+    constraint subclasses check (b or c)
+);
+
+create table Z (
+    a integer references A(id),
+    z text,
+    primary key (a, z)
+);
+
+create table D (
+    id integer primary key,
+    w text
+);
+
+create table R (
+    a integer references A(id),
+    d integer references D(id),
+    primary key (a, d)
+);
+
+-- note: while this schema facilitates easily listing all B's and C's, it
+-- would potentially cause conflicts if a tuple in Z or R refers to a tuple
+-- in A (implying that tuple should belong to the C subclass) which has c = false
+-- this can be mitigated by removing the b and c properties, but this would make
+-- listing B's and C's impossible, and would make it impossible to ensure total
+-- participation of all A's in a subclass.
+
+Q7
+
+# COMP3311 22T3 Final Exam Q7
+# Relational Algebra
+
+
+(A) Proj[a]R
+
+X
+ a
+---
+ x
+ y
+ z
+
+(B) Sel[e>d]S
+
+X
+ e | d | c 
+-----------
+ 8 | 7 | c 
+ 9 | 6 | d 
+
+(C) R Join S
+
+X
+ a | b | c | e | d 
+-------------------
+ x | 1 | a | 6 | 9 
+ y | 2 | b | 7 | 8 
+ z | 3 | a | 6 | 9 
+ x | 4 | b | 7 | 8 
+ y | 5 | a | 6 | 9 
+
+(D) R Join[b=e] S
+
+X
+ a | b | R.c | e | d | S.c
+---------------------------
+
+(E) R Div T
+
+X
+ a 
+---
+ x
+
+
+Q8
+
+# COMP3311 22T3 Final Exam Q8
+# Python/Psycopg2 analysis
+
+(A)
+
+The code prints the courses taken by the student with zID,
+ordered by term taken.
+For each course, print the course code and name, and mark;
+if no mark exists, print 'None' in place of the mark.
+Finally, calculates and prints the WAM of the student
+ignoring courses without a mark.
+
+
+(B)
+
+Entering an invalid zID causes no tuples to be returned,
+giving tot1 = tot2 = 0.
+Querying a student with a valid zID but no courses with
+a mark yet (e.g. new student) gives tot1 = tot2 = 0
+
+Both cases result in a division by zero when printing the WAM.
+
+
+(C)
+
+11 execute() operations
+
+The first execute() operation is done in the line cur.execute(query, [zID])
+to find the terms that the student has studied in.
+
+Then for each of the 10 terms the student studies in, the for loop will execute
+the query cur2.execute(query2, [term, zID]).
+
+
+(D)
+
+query = """
+select c.term, c.code, c.title, c.uoc, e.mark
+from Enrolments e
+join Courses c on c.id = e.course
+where student = %s
+order by c.term
+;
+"""
+
+# OPTIONAL to give Python code to use the query
+
+db = psycopg2.connect("dbname=unsw")
+cur = db.cursor()
+tot1,tot2 = (0,0)
+cur.execute(query, (zID,))
+last_term = None
+for (term, code, title, uoc, mark) in cur.fetchall():
+    if (term != last_term):
+        last_term = term
+        print(f"Courses for term {term}")
+    if mark is not None:
+        tot1 = tot1 + uoc
+        tot2 = tot2 + mark*uoc
+    print(f"{code} {title} {mark}")
+print(f"{tot2 / tot1}")
+
+Q9
+
+# COMP3311 22T3 Final Exam Q9
+# Serializabilty and Locking
+
+(A)
+
+The concurrent schedule is not conflict serializable.
+The precedence graph would look like:
+
+Conflict on X: T2 -> T1 (since T2 reads X before T1 writes to X)
+Conflict on Y: T1 -> T2 (since T1 reads Y before Y2 writes to Y)
+
+Since there is a cycle T1 -> T2 -> T1, schedule S is not conflict seriaizable.
+
+(B)
+
+Simple Approach:
+If T2 goes first then T1 receives a written Y instead of an unaltered Y
+If T1 goes first then T2 receives a written X instead of an unaltered X.
+therefore, by exhausting all possible serial arrangements, we see that no
+equivalent view serial execution exists, and therefore that the transaction
+is NOT view serialisable.
+
+Complex approach:
+Let the concurrent schedule be S, and consider the serial schedule S' = T2; T1.
+In both S and S':
+ - all reads in T2 view the initial version of both X and Y.
+ - all reads in T1 view the versions of X and Y last modified by the write in T2.
+ - the last write on Y is done by T2, and the last write on X is done by T1.
+Therefore S and S' are view equivalent.
+Hence the concurrent schedule S IS view serialisable.
+
+
+(C)
+
+T1: Lw(X) Lr(Y) R(Y) R(X) W(X) U(Y) U(X)
+T2: Lr(X) Lw(Y) R(X) R(Y) W(Y) U(Y) U(X)
+
+
+(D)
+
+Two-phase locking can cause:
+* deadlock
+* starvation
+* lower throughput, less efficient, more serial

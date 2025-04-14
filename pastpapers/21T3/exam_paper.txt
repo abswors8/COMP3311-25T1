@@ -1,0 +1,407 @@
+Question 1 (4 marks)
+
+Write an SQL view that gives information about the most recently sold properties.
+
+Define the view as q1(date,price,type), where the attributes are:
+
+date = the date the property was sold
+price = the price that it sold for
+type = what kind of property
+Note that while date and type are SQL keywords, it is safe to use them without double-quotes.
+
+The output should be ordered by price. What the output should look like:
+property=# select * from q1;
+    date    |  price  |   type    
+------------+---------+-----------
+ 2021-11-09 | 1816000 | Townhouse
+ 2021-11-09 | 1859000 | Townhouse
+ 2021-11-09 | 2154000 | House
+ 2021-11-09 | 2230000 | House
+ 2021-11-09 | 2665000 | House
+ 2021-11-09 | 2833000 | House
+ 2021-11-09 | 2836000 | House
+(7 rows)
+
+
+Question 2 (5 marks)
+
+Write an SQL view that gives a list of how many unsold properties of each type are in each suburb.
+
+Define the view as q2(suburb,ptype,nprops), where the attributes are:
+
+suburb = the name of a suburb
+ptype = the type of property (e.g. House)
+nprops = the number of properties of this type in this suburb
+The output should be ordered by property type, and then by suburb. What the output should look like:
+
+property=# select * from q2;
+     suburb     |   ptype   | nprops 
+----------------+-----------+--------
+ Alexandria     | Apartment |     42
+ Bondi Junction | Apartment |     41
+ Coogee         | Apartment |     47
+ Kingsford      | Apartment |     43
+ Alexandria     | House     |     34
+ Bondi Junction | House     |     38
+ Coogee         | House     |     38
+ Kingsford      | House     |     36
+ Alexandria     | Townhouse |      9
+ Bondi Junction | Townhouse |      9
+ Coogee         | Townhouse |      6
+ Kingsford      | Townhouse |      9
+(12 rows)
+
+Question 3 (5 marks)
+
+Write an SQL view that gives the cheapest unsold house(s).
+
+Define the view as q3(id,price,street,suburb), where the attributes are:
+
+id = the property ID
+price = list price of the property
+street = street address where property located 
+"streetNum streetName streetType" (e.g "25 Smith Street")
+suburb = suburb where property located
+The output should be ordered by property ID. What the output should look like:
+property=# select * from q3;
+  id   |  price  |       street        |  suburb   
+-------+---------+---------------------+-----------
+ 46083 | 1742000 | 86 Leonard Avenue   | Kingsford
+ 46634 | 1742000 | 88 Broadbent Street | Kingsford
+(2 rows)
+
+Question 4 (6 marks)
+
+Write a PLpgSQL function that takes a property ID and returns the full address of that property.
+
+create or replace function address(propID integer) returns text
+Addresses are formatted as follows:
+
+For an apartment
+UnitNum/StreetNum StreetName StreetType, Suburb Postode 
+e.g. 15/256 Botany Street, Bondi Junction 2022
+For a house or townhouse
+StreetNum StreetName StreetType, Suburb Postode 
+e.g. 161 Coogee Bay Road, Coogee 2034
+If the supplied ID does not exist in the database, return "No such property".
+
+Examples of how the function works:
+
+property=# select address(12345);
+     address      
+------------------
+ No such property
+(1 row)
+
+property=# select address(46600);
+                  address                  
+-------------------------------------------
+ 9/153 Mill Hill Road, Bondi Junction 2022
+(1 row)
+
+property=# select address(46601);
+              address               
+------------------------------------
+ 10 Maitland Avenue, Kingsford 2032
+(1 row)
+
+property=# select id,ptype,address(id) from Properties order by id limit 5;
+  id   |   ptype   |                address                 
+-------+-----------+----------------------------------------
+ 45678 | House     | 10 Moira Crescent, Coogee 2034
+ 45679 | Apartment | 16/97 Paul Street, Bondi Junction 2022
+ 45680 | House     | 66 Jellicoe Avenue, Kingsford 2032
+ 45681 | Apartment | 11/41 Raleigh Street, Coogee 2034
+ 45682 | House     | 94 Burrows Road, Alexandria 2015
+(5 rows)
+
+Question 5 (9 marks)
+
+Write a Python/Psycopg2 script that finds unsold properties matching criteria specified on the command line.
+
+The commnand-line arguments:
+
+sys.argv[1] = property type = Apartment or House or Townhouse
+sys.argv[2] = maximum acceptable price
+sys.argv[3] = exact number of bedrooms, or 0 = don't care
+sys.argv[4] = exact number of bathrooms, or 0 = don't care
+sys.argv[5] = exact number of carspaces, or 0 = don't care
+Each line of output consists of:
+
+the property ID
+the full adress
+# bedrooms, # bathrooms, # carspaces
+the list price
+The properties should be listed from cheapest to most expensive. If several properties have same price, order them by property ID.
+
+The examples below show examples the use of the script, and the precise format of the output:
+
+# any apartment costing up to $700,000 
+$ python3 ./q5 Apartment 700000 0 0 0
+#46428: 5/74 Leonard Avenue, Kingsford 2032, 1br, 1ba, 0car, $620000
+#45874: 13/94 Jellicoe Avenue, Kingsford 2032, 1br, 1ba, 1car, $647000
+#46784: 7/38 Borrodale Road, Kingsford 2032, 1br, 1ba, 0car, $695000
+
+# two bedroom apartments up to $800,000 
+$ python3 ./q5 Apartment 800000 2 0 0
+#46423: 18/9 Smith Street, Kingsford 2032, 2br, 1ba, 1car, $786000
+
+# 3 bedroom, 2 bathroom, apartment up to $1million 
+$ python3 ./q5 Apartment 1000000 3 2 0
+#46106: 5/87 Fischer Street, Kingsford 2032, 3br, 2ba, 0car, $847000
+#45760: 7/95 Jacques Street, Kingsford 2032, 3br, 2ba, 1car, $888000
+
+# 3 bedroom, 2 bathroom, 1 carspace apartment up to $1million 
+$ python3 ./q5 Apartment 1000000 3 2 1
+#45760: 7/95 Jacques Street, Kingsford 2032, 3br, 2ba, 1car, $888000
+
+# 5 bedroom, 3 bathroom house up to $2,500,000 
+$ python3 ./q5 House 2500000 5 3 0
+#46053: 480 Bunnerong Road, Kingsford 2032, 5br, 3ba, 2car, $2114000
+#46387: 7 Willis Street, Kingsford 2032, 5br, 3ba, 1car, $2192000
+#46577: 9 See Street, Kingsford 2032, 5br, 3ba, 1car, $2356000
+
+Question 6 (8 marks)
+
+The following ER diagram describes an online recipe database scenario.
+
+see q6 image
+
+Convert the ER diagram into a relational schema expressed as a collection of PostgreSQL CREATE TABLE statements. Your schema must show all primary key constraints and foreign key constraints. You may add any new attributes that you need to represent all aspects of the ER diagram; assign them types and constraints as appropriate. The precise name of a new attribute is not important, as long as it is different from existing attributes. If there are any semantic aspects suggested by the diagram and comments below which cannot be represented in the relational schema using standard SQL constraints, document these.
+
+The following gives more details on the precise semantics of the scenario:
+
+every recipe is owned by a user; every recipe has at least one ingredient
+any attribute called id is a serial attribute
+attributes name, email, title, are unit are text strings, and must have a value
+the amount attribute is a positive integer quantity
+a recipe can be associated with zero or more tags, which give additional features of the recipe
+each tag is a text string such as 'vegetarian', 'spicy', 'korean', 'easy-to-make', etc.
+
+Exercise: Write an SQL schema that accurately represents the above ER design.
+
+
+Question 7 (6 marks)
+
+Consider the following two fragments of Python/Psycopg2 code:
+
+A
+import psycopg2
+zid = 5128688
+q1 = '''
+select t.id,t.code
+from   program_enrolments e
+       join terms t on e.term = t.id
+where  e.student = %s
+order by t.starting
+'''
+q2 = '''
+select s.code, s.name
+from   course_enrolments e
+       join courses c on e.course = c.id
+       join subjects s on c.subject = s.id
+where  c.term = %s and e.student = %s
+order by s.code
+'''
+
+try:
+   db = psycopg2.connect("dbname=mymyunsw")
+   c1 = db.cursor()
+   c2 = db.cursor()
+   c1.execute(q1,[zid])
+   for t in c1.fetchall():
+      print(t[1])
+      c2.execute(q2,[t[0],zid])
+      for s in c2.fetchall():
+         print(s[0],s[1])
+   c2.close()
+   c1.close()
+except:
+   print("DB error: ", err)
+finally:
+   if db:
+      db.close()
+   	
+B
+import psycopg2
+zid = 5128688
+q1 = '''
+select t.id, t.code, s.code, s.name
+from   course_enrolments e
+       join courses c on e.course = c.id
+       join terms t on c.term = t.id
+       join subjects s on c.subject = s.id
+where  e.student = %s
+order by t.starting,s.code
+'''
+
+try:
+   db = psycopg2.connect("dbname=mymyunsw")
+   c = db.cursor()
+   c.execute(q1,[zid])
+   prev = 0
+   for t in c.fetchall():
+      if t[1] != prev:
+         print(t[1])
+      print(t[2],t[3])
+      prev = t[1]
+   c.close()
+except:
+   print("DB error: ", err)
+finally:
+   if db:
+      db.close()
+
+Assume that this student (zid:5128688) studied 29 subjects over 10 terms. Assume also that the scripts have no errors.
+
+Do these two scripts produce the same output?
+
+How many times does each script call the execute() method?
+
+Which script is likely to be faster?
+
+Question 8 (4 marks)
+
+Explain each of the following observations in 2-4 sentences.
+
+Consider the execution times of the following queries:
+
+mymyunsw=# select fullname from people where id=9300035;
+   fullname    
+---------------
+ John Shepherd
+(1 row)
+
+Time: 1.242 ms
+mymyunsw=# select fullname from people where id=9300035;
+   fullname    
+---------------
+ John Shepherd
+(1 row)
+
+Time: 0.284 ms
+
+Subsequent execution times for the same query are all around 0.28 ms. Why is the first execution so much slower? Assume that the database server started just before the first query.
+
+Consider the execution times of the following two queries:
+
+mymyunsw=# select max(id) from people;
+   max   
+---------
+ 5235067
+(1 row)
+
+Time: 0.291 ms
+   	
+mymyunsw=# select max(birthday) from people;
+    max     
+------------
+ 2000-12-30
+(1 row)
+
+Time: 0.891 ms
+
+Subsequent executions of the queries have similar timing. Why is the first query faster than the second?
+
+Question 9 (7 marks)
+
+Consider the following (partial) flight booking schema:
+
+Flights(flight_no, aircraft, nseats, nbooked, departure, ...)
+Bookings(flight_no, passenger, seat_no)
+The nbooked attribute is maintained by the triggers below and aims to record the total number of seats booked on the flight. Each booking is for one passenger in a particular seat. Bookings cannot be updated, only insertdeleted.
+
+Now consider the triggers that maintain nbooked and do other checks.
+
+create trigger pre_booking before insert or delete on Bookings
+for each row execute procedure pre_booking_check();
+
+create function pre_booking_check() returns trigger
+as $$
+declare
+   fno text;
+   flight record;
+begin
+   if TG_OP = 'INSERT' then
+      fno := new.flight_no
+   else
+      fno := old.flight_no
+   end if;
+   select * into flight from Flights where flight_no = fno;
+   if not found then
+      raise exception 'Booking error';
+   end if;
+   if TG_OP = 'DELETE' then
+      return old;
+   else
+      if flight.nbooked = flight.nseats then
+         raise exception 'Booking error';
+      end if;
+      return new;
+   end if;
+end;
+$$ language plpgsql;
+
+create trigger post_booking after insert or delete on Bookings
+for each row execute procedure post_booking_update();
+
+create function post_booking_update() returns trigger
+as $$
+declare
+   fno text;
+   flight record;
+begin
+   if TG_OP = 'INSERT' then
+      update Flights set nbooked = nbooked+1 where flight_no = new.flight_no;
+   else
+      update Flights set nbooked = nbooked-1 where flight_no = old.flight_no;
+   end if;
+end;
+$$ language plpgsql;
+You should assume that the above code is syntactically correct.
+
+
+A. Describe what conditions are being checked in pre_booking_check()?
+
+B. Suggest what other conditions could be checked in pre_booking_check()?
+
+C. Describe what happens when the following SQL statement is executed on flight QF01, where seat 25-D is currently empty
+
+insert into Bookings values ('QF01','John Smith','25-D');
+
+D. Describe what happens when the following SQL statement is executed on a full flight QF02
+
+insert into Bookings values ('QF02','John Smith','25-D');
+
+E. Describe what happens when the following SQL statement is executed on flight QF03, which already has a booking in seat 15-F
+
+delete from Bookings where flight_no = 'QF03' and seat_no = '15-F';
+
+Question 10 (6 marks)
+
+Consider the following spreadsheet containing information about PhD students and their topic and supervisor:
+
+A	    B	            C	                            D	    E 	        F  
+3312345	David Wang	    Database Query Optimisation	    9300123	Prof Pickle	Databases
+3456789	Peter Piper	    Simulation of Rat Intelligence	9512345	Prof Zany	AI
+3334445	Tammy Tiger	    What's Wrong with MongoDB?	    9300123	Prof Pickle	Databases
+3987654	Sarah Snook	    Wifi, Wifi, Wherefore art thou?	9054321	Prof Iso	Networks
+3876543	Roger Dodger	After the Singularity	        9512345	Prof Zany	AI
+The columns in the spreadsheet represent the following:
+
+A	Student ID number
+B	Student name
+C	Thesis topic
+D	Supervisor ID number
+E	Supervisor name
+F	Supervisor specialty
+You may assume that students only ever do one PhD, and don't change topic or supervisor.
+
+Exercises:
+
+A. Based on your understanding of the problem, aided by the values in the spreadsheet, identify the functional dependencies in the above table.
+
+B. Using the BCNF decomposition algorithm, convert ABCDEF into a BCNF schema. 
+At each step, you must show the relevant functional dependencies and the primary key for each table.
+
+C. Describe briefly, in english, what each of the tables in the final BCNF schema represents.

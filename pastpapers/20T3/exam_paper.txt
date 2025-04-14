@@ -1,0 +1,278 @@
+Question 1 (5 marks)
+
+Write an SQL view that gives the country name of each team and the number of matches it has played.
+
+Define a view q1(team,nmatches) in the file q1.sql
+
+
+
+Question 2 (6 marks)
+
+Write an SQL view that gives the names of all players who have scored more than one goal that is rated as "amazing".
+Each tuple in the result should also include the number of amazing goals scored.
+
+Define a view q2(player,ngoals) in the file q2.sql
+
+Question 3 (8 marks)
+
+Write an SQL view that gives the country name of the team which has the most players who have never scored a goal. 
+The view should show the number of goal-less players, as well as the country name.
+
+Define a view q3(team,nplayers) in the file q3.sql
+
+Question 4 (9 marks)
+
+Write a PLpgSQL function that takes the names of two teams ans returns the number of matches that they have played against each other.
+
+create or replace function Q4(_team1 text, _team2 text) returns integer ...
+If the teams have never played against each other, the function should return 0. If either of the function parameters is not the name of a team, return NULL.
+
+Question 5 (9 marks)
+
+Write a PLpgSQL function that takes the name of a team and returns a single table containing the number of red and yellow cards awarded against players on that team. The function takes a text argument and returns a tuple of type RedYellow.
+
+create type RedYellow as (nreds integer, nyellows integer);
+
+create or replace function Q5(_team text) returns RedYellow ...
+Note that some teams have had no red cards awarded against them. A zero should appear in the nreds attribute for such teams.
+
+If the function parameter is not the name of a team, return a tuple (NULL,NULL).
+
+Question 6 (9 marks)
+
+Write Python/Psycopg2 script that produces a list of match reports for a specified team T. The team is given as the first command-line argument and must exactly match the name of a team in the Teams table; if it doesn't, print an error message and exit. The second command-line argument gives the year of interest Y.
+
+If the team name is valid, print, in order of when the match was played, information about matches played by T in year Y. Each line in the match reports list contains:
+
+opponent ... the other team in the match
+location ... the city where the match was played
+date ... the date on which the match was played
+result ... whether T won or lost
+score ... goals by T and goals by opponent
+An example, to show the expected output format and error messages:
+
+$ ./q6 'Australia'
+Usage: q6 TeamName Year
+$ ./q6 'australia' 2002
+No team 'australia'  -- not an EXACT match
+$ ./q6 'Australia' 1999 
+No matches
+$ ./q6 'Australia' 2006
+played Argentina in Sydney on 2006-02-21 and drew 1-1
+played Japan in Melbourne on 2006-05-20 and lost 0-2
+played Netherlands in Melbourne on 2006-08-08 and won 1-0
+played Japan in Kyoto on 2006-11-21 and drew 1-1
+played Uruguay in San Carlos on 2006-12-24 and lost 1-2
+The first goal is always the goal scored by team T.
+
+Question 7 (10 marks)
+
+Write a Python/Psycopg2 script that uses data from the footy database to produce a summary report on a player's career. The player is supplied as a command-line argument and needs to exactly match the name as stored in the database (the whole name, with matching upper/lower case).
+
+There are multiple players in the database who share names. None of the test cases will use these players, so you can assume that the supplied name matches 0 or 1 players.
+
+The script should print one line for each match they played where they scored at least one goal; the line should contain where they played, what date and how many goals they scored. Matches should be shown in chronological order. The script should also count the number of matches played, the total goals scored and produce a summary line at the, which includes the name of the team/country they played for. The examples bewlow show the expected output format:
+
+$ ./q7
+Usage: ./q7 PlayerName
+$ ./q7 "Bugs Bunny"
+No such player
+$ ./q7 'Michael Baumann'
+played in Eindhoven on 2000-02-06 and scored 1 goal
+played in Lyon on 2001-07-21 and scored 1 goal
+played in Seoul on 2001-10-04 and scored 1 goal
+played in Firenze on 2002-10-27 and scored 1 goal
+played in Linkoping on 2003-11-03 and scored 1 goal
+played in Dortmund on 2005-03-28 and scored 1 goal
+played in Munich on 2005-10-20 and scored 1 goal
+played in Madrid on 2007-08-12 and scored 1 goal
+Summary: played for Germany, 56 matches, 8 goals
+
+Question 8 (7 marks)
+
+Consider the following ER diagram, describing the part-time and casual employees in a small company.
+
+(Refer to the image q8)
+
+Assume that all people have an employee ID (a number), a name and a position (e.g. manager, developer, etc.) Salaries are determined based on the position and so are not stored in this part of the data model. For part-time employees, we need to record the fraction they work (e.g. 50% of full-time, etc.). For casual employees, we need to record the hours they work. Note that casuals can only work for one time period on any given day (i.e. one shift).
+
+For each exercise below, do the following:
+
+- Express your schema as one or more PostgreSQL CREATE TABLE statements.
+- Give any attribute and table constraints that help to enforce the semantics implied in the diagram.
+- Specify appropriate primary keys (always) and foreign keys (if needed) for all tables.
+- You must specify appropriate types for attributes, based on the type information given in the diagram.
+- Explain how the total participation and disjoint semantics are/are-not preserved in the schema.
+
+Exercises:
+
+a. Map the above ER diagram into a relational schema, using the ER-style mapping for translating the subclasses.
+
+b. Map the above ER diagram into a relational schema, using the single-table mapping for translating the subclasses.
+
+Question 9 (8 marks)
+
+Note: This question is asking you to write some PLpgSQL functions. While you have a PostgreSQL server and could test these out, by building a small database of your own, we do not expect you to do this. Simply write the code in the file q9.sql as accurately as you can. Your work will not be tested via PostgreSQL, but will be assessed based on how close your code is to a correct solution.
+
+In the MyMyUNSW database from Assignment 2, courses had evaluations (or ratings) assoaciated with them, which roughly correspond to the average score for the final question on the MyExperience survey. Some students might be interested in selecting/avoiding courses based on their rating. Doing this would require using the data in the following two tables:
+
+Courses(id,subject,term,homepage)
+CourseEnrolments(student,course,mark,grade,stueval)
+Note that we don't want to consider all courses here since e.g. a course with one student who rates the course 6 would get an unfair rating advantage. To ensure that we have a reasonable statistical basis for ratings, we use the following strategy:
+
+the stueval field gives a rating on a 1..6 scale (1=poor .. 6=excellent)
+nS ... the total number of students enrolled in the course
+nE ... the number of students who gave an evaluation
+avgEval ... the mean of the non-null evaluations (the overall course evaluation)
+we consider only courses satisfying   (nS > 10 && (3*nE) > nS)
+Writing a query to provide an answer to this results in an expensive computation each time a student wants to find course ratings. It is simpler and more efficient if each Courses tuple already contains values for nS, nE, avgEval. This can be achieved by adding extra fields to the Courses table and using triggers to maintain these fields to be consistent with the records in the CourseEnrolments table. That is, we can modify the Courses table to:
+
+Courses(id,subject,term,homepage,nS,nE,avgEval)
+Newly-inserted Courses tuples have nS and nE set to 0, and avgEval set to NULL.
+
+The triggers are defined as follows:
+
+create trigger AddCourseEnrolmentTrigger
+after insert on CourseEnrolments
+execute procedure fixCoursesOnAddCourseEnrolment();
+
+create trigger DropCourseEnrolmentTrigger
+after delete on CourseEnrolments
+execute procedure fixCoursesOnDropCourseEnrolment();
+
+create trigger ModCourseEnrolmentTrigger
+after update on CourseEnrolments
+execute procedure fixCoursesOnModCourseEnrolment();
+Exercises:
+
+Write the trigger function fixCoursesOnAddCourseEnrolment().
+
+Write the trigger function fixCoursesOnDropCourseEnrolment().
+
+Write the trigger function fixCoursesOnModCourseEnrolment(). 
+
+Note that most of the time, an update to a course enrolment will change only the mark or grade, and leave the evaluation unchanged. However, it is also possible that an update might add a new evaluation or change an existing evaluation. You may assume that evaluations will never be erased once set.
+
+Question 10 (7 marks)
+
+Consider the following partial Python script that uses the same soccer database as for the Prac Part of the exam:
+
+qT = "select id,country from Teams order by country"
+qC = """
+select m.city, count(*)
+from   Matches m join Involves i on (m.id = i.match)
+where  i.team = %s
+group  by m.city
+order  by m.city
+"""
+db = psycopg2.connect("dbname=footy")
+cur = db.cursor()
+cur.execute(qT)
+results1 = cur.fetchall()
+for tuple1 in results1:
+   tid, t = tuple1
+   cur.execute(qC, [tid])
+   results2 = cur.fetchall()
+   for tuple2 in results2:
+      c, n = tuple2
+      print(f"{t} {c} {n}")
+Assume that all statements in the above script execute without generating an exception.
+
+Exercises:
+
+a. Explain briefly (2-3 lines) what this script is attempting to achieve (i.e. what does its output contain).
+
+b. Assuming that we had a much larger database with the same schema but with 100 teams and 500 cities in the database, calculate how many calls to cur.execute() will be issued in executing the script.
+
+c. Write a single SQL query that could be used to achieve the same result.
+
+Question 11 (6 marks)
+
+Consider the following spreadsheet used by a lecturer to manage marks in her courses:
+
+A	B	C	D	 E 	  F  	  G  
+3312345	John Smith	3978	COMP3123	ass1	10	8
+3312345	John Smith	3978	COMP3123	ass2	20	14
+3312345	John Smith	3978	COMP3321	proj	35	30
+3312345	John Smith	3978	COMP3345	lab1	5	4
+3234567	Cynthia Wang	3648	COMP3123	ass1	10	9
+3234567	Cynthia Wang	3648	COMP3321	proj	35	34
+3234567	Cynthia Wang	3648	COMP3345	lab1	5	3
+3234567	Cynthia Wang	3648	COMP3345	lab2	5	5
+3255555	John Smith	3645	COMP3345	lab1	5	1
+3255555	John Smith	3645	COMP3345	ass1	8	4
+...	...	...	...	...	...	...
+The columns in the spreadsheet represent the following:
+
+A	Student ID number
+B	Student's name
+C	Degree being studied by the student
+D	Course code
+E	Assessment item within the course
+F	Maximum possible mark for this item
+G	Student's mark for this item
+You may assume that students only ever enrol in one degree.
+
+Exercises:
+
+a. Based on your understanding of the problem, aided by the values in the spreadsheet, identify the functional dependencies in the above table.
+
+b. Using the BCNF decomposition algorithm, convert ABCDEFG into a BCNF schema. 
+At each step, you must show the relevant functional dependencies and the primary key for each table.
+
+c. Describe briefly, in english, what each of the tables in the final BCNF schema represents.
+
+Question 12 (6 marks)
+
+Consider the following simplified schema for a database representing employees and departments in a medium-sized business:
+
+create table Employees (
+	eno     integer,  -- employee ID
+	ename   text,     -- employee's name
+	payRate float,    -- hourly rate of pay
+	dno     integer,  -- department where they work
+	...
+	primary key (eno),
+	foreign key (dno) references Departments(dno)
+);
+create table TimeSheet (  -- keep data for only one week
+	eno     integer,  -- employee ID
+	day     varchar(3) check (day in ('mon','tue','wed','thu','fri','sat','sun')),
+	started time,     -- starting time of work period
+	ended   time,     -- ending time of work period
+
+	primary key (eno,day,start),
+	foreign key (eno) references Employees(eno)
+);
+create table Department (
+	dno     integer,  -- department ID
+	dname   text,     -- department name
+	eno     integer,  -- department manager
+	...
+	primary key (dno),
+	foreign key (eno) references Employees(eno)
+);
+The above SQL schema could be represented as the following abstract schema (with some renaming):
+
+Empl(eno,ename,payRate,dno...)
+Time(eno,day,started,ended)
+Dept(dno,dname,eno,...)
+Using the abstract schema and the standard relational agebra operators (selection (Sel), projection (Proj), join (Join), union (Union), intersection (Intersect), difference (-), division (/)) along with the boolean operators from SQL where clauses, write relational algebra expressions to solve the queries below. You can express your relational algebra as a sequence of assignments to relational algebra variables representing intermediate results.
+
+A sample of the syntax for relational algebra follows:
+
+Assume that tables are R(x,z), S(y,w)
+Tmp1(x,z)     = Sel[x > 5](R)
+Tmp2(x,z,y,w) = Tmp1 Join[x = y] S
+Res           = Proj[x,z](Tmp2)
+Note that you do not need to use an explicit Rename operator (although you can if you want to). You can accomplish renaming by writing the new names of all attributes on the left-hand side of the equals. If you do not use renaming, we assume that the attributes have the same names as the attributes in the tables on the right-hand side of the equals.
+
+Exercises:
+
+a. Which employees earn more than $20 per hour (give their employee id and name).
+
+b. Who are the department managers (give just their name).
+
+c. Which employees worked on every week day during the last week (give just their name). 
+You may assume that there will be at least one employee working on each week day.
+
